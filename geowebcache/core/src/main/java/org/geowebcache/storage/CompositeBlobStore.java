@@ -167,6 +167,15 @@ public class CompositeBlobStore implements BlobStore {
             configLock.readLock().unlock();
         }
     }
+    
+    public BlobStore getStore(TileObject obj) throws StorageException {
+    	configLock.readLock().lock();
+        try {
+        	return store(obj.getLayerName());
+        } finally {
+            configLock.readLock().unlock();
+        }
+    }
 
     @Override
     public void put(TileObject obj) throws StorageException {

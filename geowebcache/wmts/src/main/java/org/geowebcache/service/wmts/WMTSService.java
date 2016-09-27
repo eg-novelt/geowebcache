@@ -26,6 +26,8 @@ import java.util.Map.Entry;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.geowebcache.GeoWebCacheDispatcher;
 import org.geowebcache.GeoWebCacheException;
 import org.geowebcache.GeoWebCacheExtensions;
@@ -47,6 +49,8 @@ import org.geowebcache.util.ServletUtils;
 import org.geowebcache.util.URLMangler;
 
 public class WMTSService extends Service  {
+	
+	private static Log log = LogFactory.getLog(org.geowebcache.service.wmts.WMTSService.class);
 
     public static final String SERVICE_WMTS = "wmts";
     static final String SERVICE_PATH = "/"+GeoWebCacheDispatcher.TYPE_SERVICE+"/"+SERVICE_WMTS;
@@ -239,6 +243,8 @@ public class WMTSService extends Service  {
         final long tilesHigh = gridSubset.getNumTilesHigh((int) z);
 
         long y = tilesHigh - Long.parseLong(tileRow) - 1;
+        
+        log.debug("Flipping y from " + tileRow + " to " + y + " using max tiles: " + tilesHigh );
 
         String tileCol = values.get("tilecol");
         if (tileCol == null) {
@@ -272,6 +278,8 @@ public class WMTSService extends Service  {
 
         ConveyorTile convTile = new ConveyorTile(sb, layer, gridSubset.getName(), tileIndex,
                 mimeType, fullParameters, request, response);
+        
+        log.debug("Received WMTS request for " + convTile.toString());
 
         convTile.setTileLayer(tileLayer);
 

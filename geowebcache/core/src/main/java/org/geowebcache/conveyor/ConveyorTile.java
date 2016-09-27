@@ -40,250 +40,269 @@ import org.geowebcache.storage.StorageException;
 import org.geowebcache.storage.TileObject;
 
 /**
- * Represents a request for a tile and carries the information needed to complete it.
+ * Represents a request for a tile and carries the information needed to
+ * complete it.
  */
 public class ConveyorTile extends Conveyor implements TileResponseReceiver {
-    private static Log log = LogFactory.getLog(org.geowebcache.conveyor.ConveyorTile.class);
+	private static Log log = LogFactory
+			.getLog(org.geowebcache.conveyor.ConveyorTile.class);
 
-    // Shared request information, this is stored by the cache key
-    // protected long[] tileIndex = null;
+	// Shared request information, this is stored by the cache key
+	// protected long[] tileIndex = null;
 
-    // protected SRS srs = null;
-    protected String gridSetId = null;
+	// protected SRS srs = null;
+	protected String gridSetId = null;
 
-    protected GridSubset gridSubset = null;
+	protected GridSubset gridSubset = null;
 
-    protected TileLayer tileLayer = null;
+	protected TileLayer tileLayer = null;
 
-    TileObject stObj = null;
+	TileObject stObj = null;
 
-    private Map<String, String> fullParameters; // TODO: why is this "full"?  It seems to only relate to filtering
+	private Map<String, String> fullParameters; // TODO: why is this "full"? It
+												// seems to only relate to
+												// filtering
 
-    private boolean isMetaTileCacheOnly;
+	private boolean isMetaTileCacheOnly;
 
-    public ConveyorTile(StorageBroker sb, String layerId, HttpServletRequest servletReq,
-            HttpServletResponse servletResp) {
-        super(layerId, sb, servletReq, servletResp);
-    }
+	public ConveyorTile(StorageBroker sb, String layerId,
+			HttpServletRequest servletReq, HttpServletResponse servletResp) {
+		super(layerId, sb, servletReq, servletResp);
+	}
 
-    /**
-     * @deprecated as of 1.2.5, use
-     *             {@link #ConveyorTile(StorageBroker, String, String, long[], MimeType, Map, HttpServletRequest, HttpServletResponse)}
-     *             instead. This method just calls it with the provided {@code fullParameters} and
-     *             will be removed soon
-     */
-    @Deprecated
-    public ConveyorTile(StorageBroker sb, String layerId, String gridSetId, long[] tileIndex,
-            MimeType mimeType, Map<String, String> fullParameters,
-            Map<String, String> modifiedParameters, HttpServletRequest servletReq,
-            HttpServletResponse servletResp) {
-        this(sb, layerId, gridSetId, tileIndex, mimeType, fullParameters, servletReq, servletResp);
-    }
+	/**
+	 * @deprecated as of 1.2.5, use
+	 *             {@link #ConveyorTile(StorageBroker, String, String, long[], MimeType, Map, HttpServletRequest, HttpServletResponse)}
+	 *             instead. This method just calls it with the provided
+	 *             {@code fullParameters} and will be removed soon
+	 */
+	@Deprecated
+	public ConveyorTile(StorageBroker sb, String layerId, String gridSetId,
+			long[] tileIndex, MimeType mimeType,
+			Map<String, String> fullParameters,
+			Map<String, String> modifiedParameters,
+			HttpServletRequest servletReq, HttpServletResponse servletResp) {
+		this(sb, layerId, gridSetId, tileIndex, mimeType, fullParameters,
+				servletReq, servletResp);
+	}
 
-    /**
-     * This constructor is used for an incoming request, the data is then added by the cache
-     */
-    public ConveyorTile(StorageBroker sb, String layerId, String gridSetId, long[] tileIndex,
-            MimeType mimeType, Map<String, String> filteringParameters,
-            HttpServletRequest servletReq, HttpServletResponse servletResp) {
+	/**
+	 * This constructor is used for an incoming request, the data is then added
+	 * by the cache
+	 */
+	public ConveyorTile(StorageBroker sb, String layerId, String gridSetId,
+			long[] tileIndex, MimeType mimeType,
+			Map<String, String> filteringParameters,
+			HttpServletRequest servletReq, HttpServletResponse servletResp) {
 
-        super(layerId, sb, servletReq, servletResp);
-        this.gridSetId = gridSetId;
+		super(layerId, sb, servletReq, servletResp);
+		this.gridSetId = gridSetId;
 
-        long[] idx = new long[3];
+		long[] idx = new long[3];
 
-        if (tileIndex != null) {
-            idx[0] = tileIndex[0];
-            idx[1] = tileIndex[1];
-            idx[2] = tileIndex[2];
-        }
+		if (tileIndex != null) {
+			idx[0] = tileIndex[0];
+			idx[1] = tileIndex[1];
+			idx[2] = tileIndex[2];
+		}
 
-        super.mimeType = mimeType;
+		super.mimeType = mimeType;
 
-        this.fullParameters = filteringParameters;
+		this.fullParameters = filteringParameters;
 
-        stObj = TileObject.createQueryTileObject(layerId, idx, gridSetId, mimeType.getFormat(),
-                filteringParameters);
-    }
+		stObj = TileObject.createQueryTileObject(layerId, idx, gridSetId,
+				mimeType.getFormat(), filteringParameters);
+	}
 
-    public Map<String, String> getFullParameters() {
-        if (fullParameters == null) {
-            return Collections.emptyMap();
-        }
-        return fullParameters;
-    }
+	public Map<String, String> getFullParameters() {
+		if (fullParameters == null) {
+			return Collections.emptyMap();
+		}
+		return fullParameters;
+	}
 
-    public TileLayer getLayer() {
-        return this.tileLayer;
-    }
+	public TileLayer getLayer() {
+		return this.tileLayer;
+	}
 
-    public void setTileLayer(TileLayer layer) {
-        this.tileLayer = layer;
-    }
+	public void setTileLayer(TileLayer layer) {
+		this.tileLayer = layer;
+	}
 
-    public TileLayer getTileLayer() {
-        return tileLayer;
-    }
+	public TileLayer getTileLayer() {
+		return tileLayer;
+	}
 
-    /**
-     * The time that the stored tile resource was created
-     * @return
-     */
-    public long getTSCreated() {
-        return stObj.getCreated();
-    }
+	/**
+	 * The time that the stored tile resource was created
+	 * 
+	 * @return
+	 */
+	public long getTSCreated() {
+		return stObj.getCreated();
+	}
 
-    public int getStatus() {
-        return (int) status;
-    }
+	public int getStatus() {
+		return (int) status;
+	}
 
-    public void setStatus(int status) {
-        this.status = (long) status;
-    }
+	public void setStatus(int status) {
+		this.status = (long) status;
+	}
 
-    public String getErrorMessage() {
-        return this.errorMsg;
-    }
+	public String getErrorMessage() {
+		return this.errorMsg;
+	}
 
-    public void setErrorMessage(String errorMessage) {
-        this.errorMsg = errorMessage;
-    }
+	public void setErrorMessage(String errorMessage) {
+		this.errorMsg = errorMessage;
+	}
 
-    public Map<String, String> getParameters() {
-        return ((TileObject) stObj).getParameters();
-    }
+	public Map<String, String> getParameters() {
+		return ((TileObject) stObj).getParameters();
+	}
 
-    public long[] getTileIndex() {
-        return stObj.getXYZ();
-    }
+	public long[] getTileIndex() {
+		return stObj.getXYZ();
+	}
 
-    public synchronized GridSubset getGridSubset() {
-        if (gridSubset == null) {
-            gridSubset = tileLayer.getGridSubset(gridSetId);
-        }
+	public synchronized GridSubset getGridSubset() {
+		if (gridSubset == null) {
+			gridSubset = tileLayer.getGridSubset(gridSetId);
+		}
 
-        return gridSubset;
-    }
+		return gridSubset;
+	}
 
-    public String getGridSetId() {
-        return gridSetId;
-    }
+	public String getGridSetId() {
+		return gridSetId;
+	}
 
-    public void setGridSetId(String gridSetId) {
-        this.gridSetId = gridSetId;
-    }
+	public void setGridSetId(String gridSetId) {
+		this.gridSetId = gridSetId;
+	}
 
-    /**
-     * @deprecated as of 1.2.4a, use {@link #getBlob()}, keeping it for backwards compatibility as
-     *             there are geoserver builds pegged at a given geoserver revision but building gwc
-     *             from trunk. Ok to remove at 1.2.5
-     */
-    @Deprecated
-    public byte[] getContent() {
-        Resource blob = getBlob();
-        if (blob instanceof ByteArrayResource) {
-            return ((ByteArrayResource) blob).getContents();
-        }
-        ByteArrayOutputStream out = new ByteArrayOutputStream((int) blob.getSize());
-        try {
-            blob.transferTo(Channels.newChannel(out));
-            return out.toByteArray();
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
-    }
+	/**
+	 * @deprecated as of 1.2.4a, use {@link #getBlob()}, keeping it for
+	 *             backwards compatibility as there are geoserver builds pegged
+	 *             at a given geoserver revision but building gwc from trunk. Ok
+	 *             to remove at 1.2.5
+	 */
+	@Deprecated
+	public byte[] getContent() {
+		Resource blob = getBlob();
+		if (blob instanceof ByteArrayResource) {
+			return ((ByteArrayResource) blob).getContents();
+		}
+		ByteArrayOutputStream out = new ByteArrayOutputStream(
+				(int) blob.getSize());
+		try {
+			blob.transferTo(Channels.newChannel(out));
+			return out.toByteArray();
+		} catch (IOException e) {
+			throw new RuntimeException(e);
+		}
+	}
 
-    public Resource getBlob() {
-        return stObj.getBlob();
-    }
+	public Resource getBlob() {
+		return stObj.getBlob();
+	}
 
-    /**
-     * @deprecated as of 1.2.4a, use {@link #setBlob(Resource)}, keeping it for backwards
-     *             compatibility as there are geoserver builds pegged at a given geoserver revision
-     *             but building gwc from trunk. Ok to remove at 1.2.5
-     */
-    @Deprecated
-    public void setContent(byte[] payload) {
-        setBlob(new ByteArrayResource(payload));
-    }
+	/**
+	 * @deprecated as of 1.2.4a, use {@link #setBlob(Resource)}, keeping it for
+	 *             backwards compatibility as there are geoserver builds pegged
+	 *             at a given geoserver revision but building gwc from trunk. Ok
+	 *             to remove at 1.2.5
+	 */
+	@Deprecated
+	public void setContent(byte[] payload) {
+		setBlob(new ByteArrayResource(payload));
+	}
 
-    public void setBlob(Resource payload) {
-        stObj.setBlob(payload);
-    }
+	public void setBlob(Resource payload) {
+		stObj.setBlob(payload);
+	}
 
-    public TileObject getStorageObject() {
-        return stObj;
-    }
+	public TileObject getStorageObject() {
+		return stObj;
+	}
 
-    public boolean persist() throws GeoWebCacheException {
-        try {
-            return storageBroker.put((TileObject) stObj);
-        } catch (StorageException e) {
-            throw new GeoWebCacheException(e);
-        }
-    }
+	public boolean persist() throws GeoWebCacheException {
+		try {
+			return storageBroker.put((TileObject) stObj);
+		} catch (StorageException e) {
+			throw new GeoWebCacheException(e);
+		}
+	}
 
-    public boolean retrieve(long maxAge) throws GeoWebCacheException {
-        try {
-            if (isMetaTileCacheOnly) {
-                boolean cached = storageBroker.getTransient((TileObject) stObj);
-                this.setCacheResult(cached ? CacheResult.HIT : CacheResult.MISS);
-                return cached;
-            }
-            boolean ret = storageBroker.get((TileObject) stObj);
+	public boolean retrieve(long maxAge) throws GeoWebCacheException {
+		try {
+			if (isMetaTileCacheOnly) {
+				boolean cached = storageBroker.getTransient((TileObject) stObj);
+				this.setCacheResult(cached ? CacheResult.HIT : CacheResult.MISS);
+				return cached;
+			}
+			boolean ret = storageBroker.get((TileObject) stObj);
 
-            // Do we use expiration, and if so, is the tile recent enough ?
-            if (ret && maxAge > 0 && stObj.getCreated() + maxAge < System.currentTimeMillis()) {
-                ret = false;
-            }
+			// Do we use expiration, and if so, is the tile recent enough ?
+			if (ret && maxAge > 0
+					&& stObj.getCreated() + maxAge < System.currentTimeMillis()) {
+				log.debug("Tile is expired: " + maxAge + ", "
+						+ ((TileObject) stObj).toString());
+				ret = false;
+			}
 
-            if (ret) {
-                this.setCacheResult(CacheResult.HIT);
-            } else {
-                this.setCacheResult(CacheResult.MISS);
-            }
+			if (ret) {
+				log.debug("Tile cache hit: " + maxAge + ", "
+						+ ((TileObject) stObj).toString());
+				this.setCacheResult(CacheResult.HIT);
+			} else {
+				log.debug("Tile cache miss: " + maxAge + ", "
+						+ ((TileObject) stObj).toString());
+				this.setCacheResult(CacheResult.MISS);
+			}
 
-            return ret;
+			return ret;
 
-        } catch (StorageException se) {
-            log.warn(se.getMessage());
-            return false;
-        }
-    }
+		} catch (StorageException se) {
+			log.warn(se.getMessage());
+			return false;
+		}
+	}
 
-    public String toString() {
-        StringBuilder str = new StringBuilder();
-        str.append("ConveyorTile[");
-        long[] idx = stObj.getXYZ();
+	public String toString() {
+		StringBuilder str = new StringBuilder();
+		str.append("ConveyorTile[");
+		long[] idx = stObj.getXYZ();
 
-        if (idx != null && idx.length == 3) {
-            str.append("{" + idx[0] + "," + idx[1] + "," + idx[2] + "} ");
-        }
+		if (idx != null && idx.length == 3) {
+			str.append("{" + idx[0] + "," + idx[1] + "," + idx[2] + "} ");
+		}
 
-        if (getLayer() != null) {
-            str.append(getLayerId()).append(" ");
-        }
+		if (getLayer() != null) {
+			str.append(getLayerId()).append(" ");
+		}
 
-        if (this.gridSetId != null) {
-            str.append(gridSetId).append(" ");
-        }
+		if (this.gridSetId != null) {
+			str.append(gridSetId).append(" ");
+		}
 
-        if (this.mimeType != null) {
-            str.append(this.mimeType.getFormat());
-        }
-        str.append(']');
-        return str.toString();
-    }
+		if (this.mimeType != null) {
+			str.append(this.mimeType.getFormat());
+		}
+		str.append(']');
+		return str.toString();
+	}
 
-    public String getParametersId() {
-        return stObj.getParametersId();
-    }
+	public String getParametersId() {
+		return stObj.getParametersId();
+	}
 
-    public void setMetaTileCacheOnly(boolean b) {
-        this.isMetaTileCacheOnly = b;
-    }
+	public void setMetaTileCacheOnly(boolean b) {
+		this.isMetaTileCacheOnly = b;
+	}
 
-    public boolean isMetaTileCacheOnly() {
-        return isMetaTileCacheOnly;
-    }
+	public boolean isMetaTileCacheOnly() {
+		return isMetaTileCacheOnly;
+	}
 }

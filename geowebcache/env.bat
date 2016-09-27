@@ -1,0 +1,3 @@
+SET MAVEN_HOME=D:\apache-maven-3.3.3
+SET JAVA_HOME=D:\jdk1.8.0_51
+SET Path=%MAVEN_HOME%\bin;%JAVA_HOME%\bin;C:\WINDOWS\system32;C:\WINDOWS;C:\WINDOWS\System32\Wbem;C:\WINDOWS\System32\WindowsPowerShell\v1.0\;C:\Program Files (x86)\Microsoft SDKs\TypeScript\1.0\;C:\Program Files (x86)\Microsoft Visual Studio 9.0\Common7\IDE\PrivateAssemblies\;C:\Program Files (x86)\Microsoft Visual Studio 12.0\Common7\IDE\PrivateAssemblies\;C:\Program Files (x86)\Microsoft SQL Server\120\DTS\Binn\;C:\Program Files\Microsoft\Web Platform Installer\;D:\Program Files (x86)\Subversion\bin;D:\nodejs\;C:\Program Files\Git\cmd;C:\WINDOWS\SysWOW64\WindowsPowerShell\v1.0\Modules\TShell\TShell\;C:\Users\egroning\AppData\Roaming\npm;C:\Program Files (x86)\Microsoft VS Code\bin

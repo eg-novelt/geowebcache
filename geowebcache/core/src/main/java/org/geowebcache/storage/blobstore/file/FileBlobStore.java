@@ -428,6 +428,13 @@ public class FileBlobStore implements BlobStore {
             return false;
         } else {
             Resource resource = readFile(fh);
+            int size = (int) resource.getSize();
+            
+            if (size < 663) {
+            	stObj.setStatus(Status.MISS);
+            	log.debug("PNG size was too low");
+            	return false;
+            }
             stObj.setBlob(resource);
             stObj.setCreated(resource.getLastModified());
             stObj.setBlobSize((int) resource.getSize());
@@ -464,7 +471,7 @@ public class FileBlobStore implements BlobStore {
         }
     }
 
-    private File getFileHandleTile(TileObject stObj, boolean create) throws StorageException {
+    public File getFileHandleTile(TileObject stObj, boolean create) throws StorageException {
         final MimeType mimeType;
         try {
             mimeType = MimeType.createFromFormat(stObj.getBlobFormat());
@@ -474,6 +481,8 @@ public class FileBlobStore implements BlobStore {
         }
 
         final File tilePath = pathGenerator.tilePath(stObj, mimeType);
+        
+        log.debug("Retrieved path: " + tilePath.getAbsolutePath() + " for tile " + stObj.toString());
 
         if (create) {
             File parent = tilePath.getParentFile();

@@ -17,19 +17,27 @@
 
 package org.geowebcache.layer.wms;
 
+import java.io.BufferedReader;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.lang.ProcessBuilder.Redirect;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 import javax.servlet.http.HttpServletResponse;
 
 import org.apache.commons.httpclient.methods.GetMethod;
+import org.apache.commons.io.FileUtils;
+import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.io.IOUtils;
+import org.apache.commons.lang.CharSet;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.geowebcache.GeoWebCacheException;
@@ -55,6 +63,11 @@ import org.geowebcache.locks.LockProvider.Lock;
 import org.geowebcache.mime.FormatModifier;
 import org.geowebcache.mime.MimeType;
 import org.geowebcache.mime.XMLMime;
+import org.geowebcache.storage.BlobStore;
+import org.geowebcache.storage.CompositeBlobStore;
+import org.geowebcache.storage.DefaultStorageBroker;
+import org.geowebcache.storage.StorageException;
+import org.geowebcache.storage.blobstore.file.FileBlobStore;
 import org.geowebcache.util.GWCVars;
 
 /**
@@ -369,40 +382,81 @@ public class WMSLayer extends AbstractTileLayer implements ProxyLayer {
             /** ****************** Check cache again ************** */
             if (tryCache && tryCacheFetch(tile)) {
                 // Someone got it already, return lock and we're done
+            	log.debug("In WMSLayer, cache hit");
                 return finalizeTile(tile);
             }
-    
-            tile.setCacheResult(CacheResult.MISS);
             
-            /*
-             * This thread's byte buffer
-             */
-            ByteArrayResource buffer = getImageBuffer(WMS_BUFFER);
-
-            /** ****************** No luck, Request metatile ****** */
-            // Leave a hint to save expiration, if necessary
-            if (saveExpirationHeaders) {
-                metaTile.setExpiresHeader(GWCVars.CACHE_USE_WMS_BACKEND_VALUE);
+            
+            BlobStore bs = ((DefaultStorageBroker) tile.getStorageBroker()).getBlobStore();
+            CompositeBlobStore cbs = (CompositeBlobStore) bs; 
+            FileBlobStore fbs = ((FileBlobStore) cbs.getStore(tile.getStorageObject()));
+            
+            File f = fbs.getFileHandleTile(tile.getStorageObject(), false);
+            
+            
+            //String python = "D:\\git\\vts\\src\\geo_processing_pipeline\\penv32\\Scripts\\python.exe" ;
+            //String scriptPath = "D:\\git\\vts\\src\\geo_processing_pipeline\\components\\generate_wmts_cache\\create_single_tile.py";
+            ProcessBuilder pb = new ProcessBuilder(pythonPath, addTileScriptPath, f.getAbsolutePath()).inheritIO();
+            
+            //String logFileName = FilenameUtils.removeExtension(f.getAbsolutePath()) + ".log";
+            
+           // pb.redirectErrorStream(true);
+           // pb.redirectOutput(Redirect.to(new File(logFileName)));
+            
+            log.debug("Starting process " + pythonPath + " " + addTileScriptPath + " with timeout " + this.generateTileTimeout + " seconds");
+            
+            Process proc = pb.start();
+            
+            
+            
+            boolean b = proc.waitFor(this.generateTileTimeout, TimeUnit.SECONDS);
+            
+            if (!b) {
+            	throw new GeoWebCacheException("Python timeout.");
             }
-            long requestTime = System.currentTimeMillis();
-            sourceHelper.makeRequest(metaTile, buffer);
-
-            if (metaTile.getError()) {
-                throw new GeoWebCacheException("Empty metatile, error message: "
-                        + metaTile.getErrorMessage());
+            
+            int returnCode =proc.exitValue(); 
+            
+           
+            //String output = FileUtils.readFileToString(new File(logFileName), "UTF-8");
+            
+                        
+            
+            
+            
+            
+            log.debug("In WMSLayer, handling cache miss for tile " + tile.toString() + " at file " + f.getAbsolutePath() );
+            log.debug("Return code: " + returnCode);
+            //log.debug("Output: " + output);
+            
+            if (tryCacheFetch(tile)) {
+                // Someone got it already, return lock and we're done
+            	log.debug("Successfully generated tile, cache hit");
+            	tile.setCacheResult(CacheResult.HIT);
+                return finalizeTile(tile);
+            } else {
+            	log.debug("FAILED to  generate tile, cache hit");
+            	tile.setCacheResult(CacheResult.MISS);
             }
-
-            if (saveExpirationHeaders) {
-                // Converting to seconds
-                saveExpirationInformation((int) (tile.getExpiresHeader() / 1000));
-            }
-
-            metaTile.setImageBytes(buffer);
-
-            saveTiles(metaTile, tile, requestTime);
+            
 
             /** ****************** Return lock and response ****** */
-        } finally {
+        }catch (InterruptedException ex) {
+        	tile.setCacheResult(CacheResult.MISS);
+        	log.warn("Got a InterruptedException exception", ex);
+        	throw new GeoWebCacheException("Storage exception: "
+        		    + ex.getMessage());
+        } catch (StorageException ex) {
+        	log.warn("Got a storage exception", ex);
+        	throw new GeoWebCacheException("Storage exception: "
+        		    + ex.getMessage());
+        }
+        catch (IOException ex) {
+        	log.warn("Got a IOException exception", ex);
+        	throw new GeoWebCacheException("Storage exception: "
+        		    + ex.getMessage());
+        }
+        finally {
             if(lock != null) {
                 lock.release();
             }
@@ -459,6 +513,7 @@ public class WMSLayer extends AbstractTileLayer implements ProxyLayer {
             
             /** ****************** Check cache again ************** */
             if (tryCache && tryCacheFetch(tile)) {
+            	log.debug("Wms cache hit");
                 // Someone got it already, return lock and we're done
                 return tile;
             }
@@ -470,10 +525,12 @@ public class WMSLayer extends AbstractTileLayer implements ProxyLayer {
                 tile.setExpiresHeader(GWCVars.CACHE_USE_WMS_BACKEND_VALUE);
             }
 
+            log.debug("Wms cache miss, fetching...");
             tile = doNonMetatilingRequest(tile);
 
             if (tile.getStatus() > 299
                     || this.getExpireCache((int) gridLoc[2]) != GWCVars.CACHE_DISABLE_CACHE) {
+            	log.debug("Wms cache miss, persisting tile...");
                 tile.persist();
             }
 
@@ -492,6 +549,7 @@ public class WMSLayer extends AbstractTileLayer implements ProxyLayer {
     }
 
     public boolean tryCacheFetch(ConveyorTile tile) {
+    	log.debug("Try cache for " + tile.toString());
         int expireCache = this.getExpireCache((int) tile.getTileIndex()[2]);
         if (expireCache != GWCVars.CACHE_DISABLE_CACHE) {
             try {
@@ -506,6 +564,9 @@ public class WMSLayer extends AbstractTileLayer implements ProxyLayer {
     }
 
     public ConveyorTile doNonMetatilingRequest(ConveyorTile tile) throws GeoWebCacheException {
+    	
+    	log.debug("Called doNonMetatilingRequest: " + tile.toString());
+    	
         tile.setTileLayer(this);
 
         ByteArrayResource buffer = getImageBuffer(WMS_BUFFER);
@@ -709,8 +770,38 @@ public class WMSLayer extends AbstractTileLayer implements ProxyLayer {
     public String getProxyUrl() {
         return proxyUrl;
     }
+    
+    private String pythonPath;
+    private int generateTileTimeout;
+    private String addTileScriptPath;
+    
+    
 
-    /**
+    public String getPythonPath() {
+		return pythonPath;
+	}
+
+	public void setPythonPath(String pythonPath) {
+		this.pythonPath = pythonPath;
+	}
+
+	public int getGenerateTileTimeout() {
+		return generateTileTimeout;
+	}
+
+	public void setGenerateTileTimeout(int generateTileTimeout) {
+		this.generateTileTimeout = generateTileTimeout;
+	}
+
+	public String getAddTileScriptPath() {
+		return addTileScriptPath;
+	}
+
+	public void setAddTileScriptPath(String addTileScriptPath) {
+		this.addTileScriptPath = addTileScriptPath;
+	}
+
+	/**
      * Mandatory
      */
     public void setSourceHelper(WMSSourceHelper source) {
@@ -766,6 +857,7 @@ public class WMSLayer extends AbstractTileLayer implements ProxyLayer {
 
     public ConveyorTile getNoncachedTile(ConveyorTile tile) throws GeoWebCacheException {
 
+    	log.debug("Called getNoncachedTile: " + tile.toString());
         // Should we do mime type checks?
 
         // note: not using getImageBuffer() here cause this method is not called during seeding, so
